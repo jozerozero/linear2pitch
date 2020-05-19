@@ -57,9 +57,24 @@ class Model:
 
     def inference(self, input_feature, label, is_reuse):
         with tf.variable_scope("model", reuse=is_reuse):
-            pitch_projection_1 = FrameProjection(100, scope="cbhg_pitch_projection", activation=tf.nn.relu)
+
+            print(input_feature)
+            # exit()
+            kernel_1 = tf.get_variable(name="kernel_1", shape=[100, 1, 1])
+            input_feature = tf.expand_dims(input_feature, axis=-1)
+            input_feature = tf.squeeze(tf.nn.conv1d(input_feature, kernel_1, 1, 'VALID'), axis=-1)
+            # print(input_feature)
+            # exit()
+
+            pitch_projection_1 = FrameProjection(500, scope="cbhg_pitch_projection", activation=tf.nn.relu)
             pitch_output = pitch_projection_1(input_feature)
+            # print(pitch_output)
             # assert linear_outputs.shape[0] == tower_pitch_input[i].shape[0]
+            kernel_2 = tf.get_variable(name="kernel_2", shape=[100, 1, 1])
+            pitch_output = tf.expand_dims(pitch_output, axis=-1)
+            pitch_output = tf.squeeze(tf.nn.conv1d(pitch_output, kernel_2, 1, 'VALID'), axis=-1)
+            # print(pitch_output)
+            # exit()
             pitch_projection_2 = FrameProjection(10, scope="cbhg_pitch_projection_2", activation=tf.nn.relu)
             pitch_output = pitch_projection_2(pitch_output)
 
@@ -105,7 +120,7 @@ if __name__ == '__main__':
         train_opt = tf.train.AdamOptimizer(0.001).minimize(loss=mse)
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-
+        exit()
         with tf.Session(config=config) as session:
             tf.global_variables_initializer().run()
             for _ in range(training_step):
