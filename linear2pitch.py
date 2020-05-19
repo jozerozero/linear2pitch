@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
-import tensorflow.contrib.layers as tf_contrib_layers
-from cell_state_lstm import LSTMwithCellState
+# import tensorflow.contrib.layers as tf_contrib_layers
+# from cell_state_lstm import LSTMwithCellState
 
 
 class FrameProjection:
@@ -33,7 +33,7 @@ class FrameProjection:
 def shuffle_aligned_list(data):
     num = len(data)
     p = np.random.permutation(num)
-    return [d[p] for d in data]
+    return [data[i] for i in p]
 
 
 def batch_generator(data, batch_size):
@@ -85,13 +85,13 @@ if __name__ == '__main__':
 
     graph = tf.get_default_graph()
     with graph.as_default():
-        feature = tf.placeholder(dtype=tf.float32, shape=[128, None, 1025], name="linear_frame")
-        label = tf.placeholder(dtype=tf.float32, shape=[128, None, 1], name="pitch")
+        feature = tf.placeholder(dtype=tf.float32, shape=[1, None, 1025], name="linear_frame")
+        label = tf.placeholder(dtype=tf.float32, shape=[1, None, 1], name="pitch")
         learning_rate = tf.placeholder(dtype=tf.float32, shape=[], name="learning_rate")
 
         model = Model()
         batch_loss_list = list()
-        for index, sample in enumerate(tf.split(feature, batch_size)):
+        for index, sample in enumerate(tf.split(feature, 1)):
             sample = tf.squeeze(sample, 0)
             y = label[index]
             if index == 0:
@@ -102,22 +102,26 @@ if __name__ == '__main__':
             batch_loss_list.append(sample_mse)
 
         mse = tf.reduce_mean(batch_loss_list)
-        train_opt = tf.train.AdamOptimizer(learning_rate).minimize(loss=mse)
+        train_opt = tf.train.AdamOptimizer(0.001).minimize(loss=mse)
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
 
         with tf.Session(config=config) as session:
+            tf.global_variables_initializer().run()
             for _ in range(training_step):
                 batch_data = next(iterator)
                 batch_input_list = list()
                 batch_label_list = list()
 
                 for sample in batch_data:
-                    batch_input_list.append(np.load("training_data/linear/%s" % sample_mse[0]))
-                    batch_label_list.append(np.load("training_data/pitch/%s" % sample_mse[2]))
-
-                _, mse = session.run([train_opt, mse],
+                    batch_input_list = np.expand_dims(np.load("training_data/linear/%s" % sample[0]), axis=0)
+                    batch_label_list = np.expand_dims(np.expand_dims(np.load("training_data/pitch/%s" % sample[2]), axis=0), axis=-1)
+                    # batch_input_list = np.asarray(batch_input_list)
+                    # batch_label_list = np.asarray(batch_label_list)
+                    # p[[rin(batch_input_list)
+                    # exit()
+                    _, batch_loss = session.run([train_opt, mse],
                                      feed_dict={feature: batch_input_list,
-                                                label: batch_label_list, learning_rate: 0.001})
+                                                label: batch_label_list})
 
-                print(mse)
+                    print(batch_loss)
